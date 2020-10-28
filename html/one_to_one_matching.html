@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>一对一聊天室</title>
+    <script src="jquery.min.js"></script>
+</head>
+<body>
+
+    <div id="top">请等待匹配</div>
+
+    <div id="bottom">
+        <div id="title"></div>
+        <div id = 'users'></div>
+        <div>
+            <input type="text" id="mag"/>
+            <input type="button" value="发送" onclick="send()"/>
+        </div>
+        <div id="sed" style="height: 300px;width: 500px;border:1px solid;"></div>
+    </div>
+</body>
+<script>
+    var user;
+    var socket;
+    $(function() {
+        var random = Math.ceil(Math.random()*1000);
+        $('#bottom').hide();
+        user = {
+            id:"id_" + random,
+            name:"name_" + random,
+            pwd:"pwd_" + random
+        };
+        console.log(user);
+        var temp = typeof(user);
+        console.log(temp);
+        inChat();
+    });
+
+    //进入聊天室
+    function inChat() {
+        if (!window.WebSocket) {
+            window.WebSocket = window.MozWebSocket;
+        }
+        if (window.WebSocket) {
+            //获取h5 socket
+            socket = new WebSocket("ws://127.0.0.1:11111/");
+            //接收消息
+            socket.onmessage = function(data){
+                console.log("socket.onmessage:")
+                console.log(data);
+                var mage = JSON.parse(data.data);
+                console.log(mage.message);
+                if (mage.message == '10001') {//10001为上线
+                    $('#top').hide();
+                    $('#bottom').show();
+                    $('#title').text('chat' + mage.table);
+                    $('#users').append('<span>'+ mage.name + '\t</span>');
+                    user.table = mage.table;
+                } else if (mage.message == '20002') {//对方下线
+                    $('#bottom').hide();
+                    $('#top').show();
+                    $('#top').text('对方已下线');
+                    socket.close();
+                } else if (mage.message == '-10001') {//已经在线
+                    $('#bottom').hide();
+                    $('#top').text('已经在线!');
+                } else {//用户发的消息
+                    $('#sed').append('<span>'+ mage.name + ' : ' + mage.message + '</span><br/>');
+                }
+            }
+            //webSocket的链接
+            socket.onopen = function(data) {
+                $('#top').text('链接成功,请等待匹配');
+                console.log("socket.onopen:")
+                console.log(data);
+                user.table = '';
+                user.message = '10001';
+                delete user.pwd;
+                console.log(user);
+                //链接成功后发送用户信息进入聊天室
+                socket.send(JSON.stringify(user));
+            }
+            //webSocket关闭
+            socket.onclose = function(data) {
+                console.log("socket.onclose:")
+                console.log(data);
+            }
+            //webSocket错误信息
+            socket.onerror = function(data) {
+                console.log("socket.onerror:")
+                console.log(data);
+            }
+        } else {
+            alert("抱歉，您的浏览器不支持WebSocket协议!");
+        }
+    }
+
+    //发送消息
+    function send() {
+        user.message = $('#mag').val();
+        socket.send(JSON.stringify(user));
+    }
+</script>
+</html>
